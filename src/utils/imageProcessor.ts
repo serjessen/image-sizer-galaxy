@@ -1,3 +1,4 @@
+
 /**
  * Utility functions for image processing and conversion
  */
@@ -263,23 +264,34 @@ export function downloadBlob(blob: Blob, filename: string): void {
  * Download multiple blobs as a zip file
  */
 export async function downloadBlobsAsZip(blobs: Blob[], baseFilename: string): Promise<void> {
+  if (!blobs || blobs.length === 0) {
+    throw new Error('No blobs to download');
+  }
+  
   try {
-    // Dynamic import of JSZip to avoid importing it unconditionally
-    const JSZip = (await import('jszip')).default;
+    console.log(`Creating zip with ${blobs.length} pieces for ${baseFilename}`);
+    
+    // Dynamic import of JSZip
+    const JSZipModule = await import('jszip');
+    const JSZip = JSZipModule.default;
     const zip = new JSZip();
     
     // Add each blob to the zip file with an appropriate name
     blobs.forEach((blob, index) => {
       const extension = blob.type.split('/')[1] || 'jpg';
       const filename = `${baseFilename}_parte_${index + 1}.${extension}`;
+      console.log(`Adding to zip: ${filename}`);
       zip.file(filename, blob);
     });
     
     // Generate the zip file
+    console.log('Generating zip file...');
     const zipBlob = await zip.generateAsync({ type: 'blob' });
+    console.log(`Zip generated, size: ${zipBlob.size} bytes`);
     
     // Download the zip file
     const zipFilename = `${baseFilename}_mosaico.zip`;
+    console.log(`Downloading zip as: ${zipFilename}`);
     downloadBlob(zipBlob, zipFilename);
     
     return;

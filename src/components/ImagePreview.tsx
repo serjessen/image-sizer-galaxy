@@ -142,6 +142,7 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <button 
                 onClick={onDownload}
                 className="p-1 text-primary hover:text-primary/80 transition-colors"
+                aria-label="Download image"
               >
                 <Download className="w-4 h-4" />
               </button>

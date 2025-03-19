@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import ImageDropzone from '@/components/ImageDropzone';
@@ -31,7 +30,6 @@ const Index = () => {
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const [mosaicMode, setMosaicMode] = useState(false);
   
-  // Update viewport height on resize for mobile considerations
   useEffect(() => {
     const handleResize = () => {
       setViewportHeight(window.innerHeight);
@@ -80,10 +78,8 @@ const Index = () => {
       
       try {
         if (mosaicMode) {
-          // Process image as a 3x3 mosaic
           const mosaicPieces = await createMosaicPieces(pendingImages[i].file, 2050, 2994);
           
-          // Create a thumbnail of the first piece for preview
           const firstPieceUrl = URL.createObjectURL(mosaicPieces[0]);
           
           setImages(current => 
@@ -94,7 +90,6 @@ const Index = () => {
             )
           );
         } else {
-          // Process as a single image
           const convertedBlob = await convertImage(pendingImages[i].file, 2050, 2994);
           const convertedUrl = URL.createObjectURL(convertedBlob);
           
@@ -126,7 +121,6 @@ const Index = () => {
     setImages(images => {
       const newImages = [...images];
       
-      // Revoke URL if exists
       if (newImages[index].convertedUrl) {
         URL.revokeObjectURL(newImages[index].convertedUrl);
       }
@@ -144,9 +138,10 @@ const Index = () => {
       return;
     }
     
-    if (mosaicMode && image.mosaicPieces) {
-      // Download all mosaic pieces as a zip
+    if (mosaicMode && image.mosaicPieces && image.mosaicPieces.length > 0) {
       const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
+      console.log('Downloading mosaic with pieces:', image.mosaicPieces.length);
+      
       downloadBlobsAsZip(image.mosaicPieces, baseFilename)
         .then(() => {
           toast.success(`Mosaico de ${image.file.name} baixado com sucesso`);
@@ -156,7 +151,6 @@ const Index = () => {
           toast.error('Falha ao baixar o mosaico');
         });
     } else if (!mosaicMode && image.convertedBlob) {
-      // Download single converted image
       const filename = image.file.name.replace(
         /\.[^/.]+$/, 
         `_resized.${image.file.name.split('.').pop()}`
@@ -178,20 +172,18 @@ const Index = () => {
     }
     
     if (mosaicMode) {
-      // Download all mosaic pieces - one zip per image
       completedImages.forEach((image, index) => {
         if (!image.mosaicPieces || image.mosaicPieces.length === 0) return;
         
         const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
         
-        // Add a small delay between downloads to prevent browser blocking
         setTimeout(() => {
           downloadBlobsAsZip(image.mosaicPieces!, baseFilename)
             .catch(error => {
               console.error('Failed to download mosaic:', error);
               toast.error(`Falha ao baixar o mosaico ${baseFilename}`);
             });
-        }, index * 1000); // More delay for zips
+        }, index * 1000);
       });
       
       toast.success(
@@ -200,7 +192,6 @@ const Index = () => {
         }`
       );
     } else {
-      // Download all single images
       completedImages.forEach((image, index) => {
         if (!image.convertedBlob) return;
         
@@ -209,7 +200,6 @@ const Index = () => {
           `_resized.${image.file.name.split('.').pop()}`
         );
         
-        // Add a small delay between downloads to prevent browser blocking
         setTimeout(() => {
           downloadBlob(image.convertedBlob!, filename);
         }, index * 100);
@@ -224,7 +214,6 @@ const Index = () => {
   }, [images, mosaicMode]);
 
   const handleReset = useCallback(() => {
-    // Revoke all object URLs to prevent memory leaks
     images.forEach(image => {
       if (image.convertedUrl) {
         URL.revokeObjectURL(image.convertedUrl);
@@ -369,3 +358,4 @@ const Index = () => {
 };
 
 export default Index;
+

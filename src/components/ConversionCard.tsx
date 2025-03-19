@@ -38,7 +38,9 @@ const ConversionCard: React.FC<ConversionCardProps> = ({
           )}
         </CardTitle>
         <CardDescription>
-          Redimensionar para 2050px horizontal ou 2994px vertical
+          {mosaicMode 
+            ? "Mosaico 3×3 para impressão em folhas A4" 
+            : "Redimensionar para 2050px horizontal ou 2994px vertical"}
         </CardDescription>
       </CardHeader>
       
