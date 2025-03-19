@@ -2,8 +2,10 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, RefreshCw, Trash2 } from 'lucide-react';
+import { Download, RefreshCw, Trash2, Grid3X3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface ConversionCardProps {
   totalImages: number;
@@ -11,6 +13,8 @@ interface ConversionCardProps {
   onDownloadAll: () => void;
   onReset: () => void;
   isProcessing: boolean;
+  mosaicMode: boolean;
+  onMosaicModeChange: (enabled: boolean) => void;
 }
 
 const ConversionCard: React.FC<ConversionCardProps> = ({
@@ -18,7 +22,9 @@ const ConversionCard: React.FC<ConversionCardProps> = ({
   processedImages,
   onDownloadAll,
   onReset,
-  isProcessing
+  isProcessing,
+  mosaicMode,
+  onMosaicModeChange
 }) => {
   const progress = totalImages > 0 ? (processedImages / totalImages) * 100 : 0;
 
@@ -37,6 +43,21 @@ const ConversionCard: React.FC<ConversionCardProps> = ({
       </CardHeader>
       
       <CardContent className="pb-2">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="mosaico" 
+              checked={mosaicMode}
+              onCheckedChange={onMosaicModeChange}
+              disabled={isProcessing || totalImages > 0}
+            />
+            <Label htmlFor="mosaico" className="text-sm font-medium flex items-center cursor-pointer">
+              <Grid3X3 className="h-4 w-4 mr-2 text-primary" />
+              Modo Mosaico (3x3)
+            </Label>
+          </div>
+        </div>
+        
         {totalImages > 0 && (
           <>
             <div className="mb-2 flex items-center justify-between text-sm">
@@ -78,7 +99,7 @@ const ConversionCard: React.FC<ConversionCardProps> = ({
               disabled={processedImages === 0 || isProcessing}
             >
               <Download className="w-4 h-4 mr-2" />
-              Baixar todos
+              Baixar {mosaicMode ? "mosaicos" : "todos"}
             </Button>
           </>
         ) : (

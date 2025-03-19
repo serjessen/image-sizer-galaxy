@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Download, ArrowRight, Info } from 'lucide-react';
+import { X, Download, ArrowRight, Info, Grid3X3 } from 'lucide-react';
 import { formatFileSize, getFileDetails, createThumbnailUrl } from '@/utils/imageProcessor';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface ImagePreviewProps {
   file: File;
@@ -11,6 +12,8 @@ interface ImagePreviewProps {
   index: number;
   status: 'idle' | 'processing' | 'completed' | 'error';
   onDownload: () => void;
+  isMosaicMode?: boolean;
+  mosaicPieceCount?: number;
 }
 
 const ImagePreview: React.FC<ImagePreviewProps> = ({
@@ -19,7 +22,9 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
   onRemove,
   index,
   status,
-  onDownload
+  onDownload,
+  isMosaicMode = false,
+  mosaicPieceCount = 0
 }) => {
   const [thumbnail, setThumbnail] = useState<string | null>(null);
   const [details, setDetails] = useState<{
@@ -100,11 +105,24 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
       <div className="flex flex-col h-full">
         <div className="relative aspect-square w-full overflow-hidden">
           {thumbnail ? (
-            <img 
-              src={thumbnail} 
-              alt={file.name}
-              className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
-            />
+            <div className="relative w-full h-full">
+              <img 
+                src={thumbnail} 
+                alt={file.name}
+                className="object-cover w-full h-full transition-transform duration-300 hover:scale-105"
+              />
+              {isMosaicMode && status === 'completed' && (
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-60 pointer-events-none">
+                  {Array.from({ length: 9 }).map((_, i) => (
+                    <div key={i} className="border border-white/50 flex items-center justify-center">
+                      <span className="bg-black/50 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div className="w-full h-full bg-secondary animate-pulse flex items-center justify-center text-muted-foreground">
               <Info className="w-8 h-8" />
@@ -136,12 +154,25 @@ const ImagePreview: React.FC<ImagePreviewProps> = ({
               <span>•</span>
               <span>{formatFileSize(details.size)}</span>
               
-              {status === 'completed' && convertedUrl && (
+              {status === 'completed' && (
                 <>
                   <ArrowRight className="w-3 h-3 mx-0.5" />
-                  <span className="text-primary font-medium">2050×2994</span>
+                  {isMosaicMode ? (
+                    <Badge variant="outline" className="text-[10px] font-medium flex items-center gap-0.5 py-0 h-4">
+                      <Grid3X3 className="w-3 h-3" />
+                      <span>3×3</span>
+                    </Badge>
+                  ) : (
+                    <span className="text-primary font-medium">2050×2994</span>
+                  )}
                 </>
               )}
+            </div>
+          )}
+          
+          {isMosaicMode && status === 'completed' && (
+            <div className="text-xs text-muted-foreground">
+              <span className="font-medium text-primary">9</span> partes de 2050×2994
             </div>
           )}
         </div>

@@ -4,7 +4,13 @@ import { toast } from 'sonner';
 import ImageDropzone from '@/components/ImageDropzone';
 import ImagePreview from '@/components/ImagePreview';
 import ConversionCard from '@/components/ConversionCard';
-import { convertImage, downloadBlob, createThumbnailUrl } from '@/utils/imageProcessor';
+import { 
+  convertImage, 
+  downloadBlob, 
+  createThumbnailUrl, 
+  createMosaicPieces,
+  downloadBlobsAsZip
+} from '@/utils/imageProcessor';
 import { ChevronLeft, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,12 +22,14 @@ interface ImageItem {
   status: ImageStatus;
   convertedBlob?: Blob;
   convertedUrl?: string | null;
+  mosaicPieces?: Blob[];
 }
 
 const Index = () => {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [mosaicMode, setMosaicMode] = useState(false);
   
   // Update viewport height on resize for mobile considerations
   useEffect(() => {
@@ -71,16 +79,33 @@ const Index = () => {
       );
       
       try {
-        const convertedBlob = await convertImage(pendingImages[i].file, 2050, 2994);
-        const convertedUrl = URL.createObjectURL(convertedBlob);
-        
-        setImages(current => 
-          current.map((img, idx) => 
-            idx === index 
-              ? { ...img, status: 'completed', convertedBlob, convertedUrl } 
-              : img
-          )
-        );
+        if (mosaicMode) {
+          // Process image as a 3x3 mosaic
+          const mosaicPieces = await createMosaicPieces(pendingImages[i].file, 2050, 2994);
+          
+          // Create a thumbnail of the first piece for preview
+          const firstPieceUrl = URL.createObjectURL(mosaicPieces[0]);
+          
+          setImages(current => 
+            current.map((img, idx) => 
+              idx === index 
+                ? { ...img, status: 'completed', mosaicPieces, convertedUrl: firstPieceUrl } 
+                : img
+            )
+          );
+        } else {
+          // Process as a single image
+          const convertedBlob = await convertImage(pendingImages[i].file, 2050, 2994);
+          const convertedUrl = URL.createObjectURL(convertedBlob);
+          
+          setImages(current => 
+            current.map((img, idx) => 
+              idx === index 
+                ? { ...img, status: 'completed', convertedBlob, convertedUrl } 
+                : img
+            )
+          );
+        }
       } catch (error) {
         console.error('Error processing image:', error);
         
@@ -95,7 +120,7 @@ const Index = () => {
     }
     
     setIsProcessing(false);
-  }, [isProcessing]);
+  }, [isProcessing, mosaicMode]);
 
   const handleRemoveImage = useCallback((index: number) => {
     setImages(images => {
@@ -114,50 +139,89 @@ const Index = () => {
   const handleDownloadImage = useCallback((index: number) => {
     const image = images[index];
     
-    if (image.status !== 'completed' || !image.convertedBlob) {
+    if (image.status !== 'completed') {
       toast.error('A imagem ainda não está pronta para download');
       return;
     }
     
-    const filename = image.file.name.replace(
-      /\.[^/.]+$/, 
-      `_resized.${image.file.name.split('.').pop()}`
-    );
-    
-    downloadBlob(image.convertedBlob, filename);
-    toast.success(`${filename} baixada com sucesso`);
-  }, [images]);
+    if (mosaicMode && image.mosaicPieces) {
+      // Download all mosaic pieces as a zip
+      const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
+      downloadBlobsAsZip(image.mosaicPieces, baseFilename)
+        .then(() => {
+          toast.success(`Mosaico de ${image.file.name} baixado com sucesso`);
+        })
+        .catch((error) => {
+          console.error('Failed to download mosaic:', error);
+          toast.error('Falha ao baixar o mosaico');
+        });
+    } else if (!mosaicMode && image.convertedBlob) {
+      // Download single converted image
+      const filename = image.file.name.replace(
+        /\.[^/.]+$/, 
+        `_resized.${image.file.name.split('.').pop()}`
+      );
+      
+      downloadBlob(image.convertedBlob, filename);
+      toast.success(`${filename} baixada com sucesso`);
+    } else {
+      toast.error('Imagem não disponível para download');
+    }
+  }, [images, mosaicMode]);
 
   const handleDownloadAll = useCallback(() => {
-    const completedImages = images.filter(
-      img => img.status === 'completed' && img.convertedBlob
-    );
+    const completedImages = images.filter(img => img.status === 'completed');
     
     if (completedImages.length === 0) {
       toast.error('Nenhuma imagem pronta para download');
       return;
     }
     
-    completedImages.forEach((image, index) => {
-      if (!image.convertedBlob) return;
+    if (mosaicMode) {
+      // Download all mosaic pieces - one zip per image
+      completedImages.forEach((image, index) => {
+        if (!image.mosaicPieces || image.mosaicPieces.length === 0) return;
+        
+        const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
+        
+        // Add a small delay between downloads to prevent browser blocking
+        setTimeout(() => {
+          downloadBlobsAsZip(image.mosaicPieces!, baseFilename)
+            .catch(error => {
+              console.error('Failed to download mosaic:', error);
+              toast.error(`Falha ao baixar o mosaico ${baseFilename}`);
+            });
+        }, index * 1000); // More delay for zips
+      });
       
-      const filename = image.file.name.replace(
-        /\.[^/.]+$/, 
-        `_resized.${image.file.name.split('.').pop()}`
+      toast.success(
+        `${completedImages.length} ${
+          completedImages.length === 1 ? 'mosaico será baixado' : 'mosaicos serão baixados'
+        }`
       );
+    } else {
+      // Download all single images
+      completedImages.forEach((image, index) => {
+        if (!image.convertedBlob) return;
+        
+        const filename = image.file.name.replace(
+          /\.[^/.]+$/, 
+          `_resized.${image.file.name.split('.').pop()}`
+        );
+        
+        // Add a small delay between downloads to prevent browser blocking
+        setTimeout(() => {
+          downloadBlob(image.convertedBlob!, filename);
+        }, index * 100);
+      });
       
-      // Add a small delay between downloads to prevent browser blocking
-      setTimeout(() => {
-        downloadBlob(image.convertedBlob!, filename);
-      }, index * 100);
-    });
-    
-    toast.success(
-      `${completedImages.length} ${
-        completedImages.length === 1 ? 'imagem baixada' : 'imagens baixadas'
-      }`
-    );
-  }, [images]);
+      toast.success(
+        `${completedImages.length} ${
+          completedImages.length === 1 ? 'imagem baixada' : 'imagens baixadas'
+        }`
+      );
+    }
+  }, [images, mosaicMode]);
 
   const handleReset = useCallback(() => {
     // Revoke all object URLs to prevent memory leaks
@@ -170,6 +234,16 @@ const Index = () => {
     setImages([]);
     toast.info('Todas as imagens foram removidas');
   }, [images]);
+
+  const handleMosaicModeChange = useCallback((enabled: boolean) => {
+    setMosaicMode(enabled);
+    
+    if (enabled) {
+      toast.info('Modo mosaico ativado. Cada imagem será dividida em 9 partes iguais.');
+    } else {
+      toast.info('Modo mosaico desativado. As imagens serão redimensionadas normalmente.');
+    }
+  }, []);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-background to-secondary/20">
@@ -185,6 +259,7 @@ const Index = () => {
           </h1>
           <p className="text-muted-foreground max-w-2xl mx-auto text-balance">
             Transforme suas imagens para 2050px horizontal ou 2994px vertical mantendo a qualidade.
+            {mosaicMode && " No modo mosaico, cada imagem é dividida em 9 partes para impressão em folhas A4."}
           </p>
         </header>
         
@@ -196,6 +271,8 @@ const Index = () => {
               onDownloadAll={handleDownloadAll}
               onReset={handleReset}
               isProcessing={isProcessing}
+              mosaicMode={mosaicMode}
+              onMosaicModeChange={handleMosaicModeChange}
             />
             
             {images.length > 0 && (
@@ -205,6 +282,9 @@ const Index = () => {
                   <li>Horizontal: 2050px</li>
                   <li>Vertical: 2994px</li>
                   <li>Formatos: JPG, PNG, WebP</li>
+                  {mosaicMode && (
+                    <li className="text-primary">Mosaico: 3×3 partes</li>
+                  )}
                 </ul>
               </div>
             )}
@@ -247,6 +327,8 @@ const Index = () => {
                       index={index}
                       status={image.status}
                       onDownload={() => handleDownloadImage(index)}
+                      isMosaicMode={mosaicMode}
+                      mosaicPieceCount={image.mosaicPieces?.length || 0}
                     />
                   ))}
                   
@@ -275,7 +357,11 @@ const Index = () => {
         </div>
         
         <footer className="mt-16 text-center text-sm text-muted-foreground animate-fade-in opacity-0" style={{ animationDelay: '0.3s', animationFillMode: 'forwards' }}>
-          <p>Redimensione múltiplas imagens rapidamente sem comprometer a qualidade</p>
+          <p>
+            {mosaicMode 
+              ? "Crie mosaicos 3×3 para impressão em folhas A4 e monte painéis de grande formato" 
+              : "Redimensione múltiplas imagens rapidamente sem comprometer a qualidade"}
+          </p>
         </footer>
       </div>
     </div>

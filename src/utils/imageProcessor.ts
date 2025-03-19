@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for image processing and conversion
  */
@@ -55,6 +54,126 @@ export async function convertImage(
           reject(new Error('Failed to convert image to blob'));
         }
       }, file.type || 'image/jpeg', 0.95);
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
+    
+    img.src = url;
+  });
+}
+
+/**
+ * Split image into a 3x3 mosaic, each piece with specified dimensions
+ */
+export async function createMosaicPieces(
+  file: File,
+  pieceWidth: number = 2050,
+  pieceHeight: number = 2994
+): Promise<Blob[]> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      // For mosaic, we need to create a large image first that can be divided into 9 equal pieces
+      // Each piece will be pieceWidth x pieceHeight
+      const totalWidth = pieceWidth * 3;
+      const totalHeight = pieceHeight * 3;
+      
+      // Calculate scale to fit original image into the 3x3 grid
+      const scaleWidth = totalWidth / img.width;
+      const scaleHeight = totalHeight / img.height;
+      const scale = Math.max(scaleWidth, scaleHeight);
+      
+      // Calculate the scaled dimensions
+      const scaledWidth = img.width * scale;
+      const scaledHeight = img.height * scale;
+      
+      // Center positioning
+      const x = (totalWidth - scaledWidth) / 2;
+      const y = (totalHeight - scaledHeight) / 2;
+      
+      // Create a temporary canvas for the full-size image
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = totalWidth;
+      tempCanvas.height = totalHeight;
+      const tempCtx = tempCanvas.getContext('2d');
+      
+      if (!tempCtx) {
+        URL.revokeObjectURL(url);
+        reject(new Error('Could not get canvas context'));
+        return;
+      }
+      
+      // Fill with white background
+      tempCtx.fillStyle = '#FFFFFF';
+      tempCtx.fillRect(0, 0, totalWidth, totalHeight);
+      
+      // Draw the scaled image centered
+      tempCtx.drawImage(img, x, y, scaledWidth, scaledHeight);
+      
+      // Now create 9 separate canvases for each piece
+      const pieces: Blob[] = [];
+      let piecesCompleted = 0;
+      
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+          const pieceCanvas = document.createElement('canvas');
+          pieceCanvas.width = pieceWidth;
+          pieceCanvas.height = pieceHeight;
+          const pieceCtx = pieceCanvas.getContext('2d');
+          
+          if (!pieceCtx) {
+            URL.revokeObjectURL(url);
+            reject(new Error('Could not get piece canvas context'));
+            return;
+          }
+          
+          // Fill the piece background with white
+          pieceCtx.fillStyle = '#FFFFFF';
+          pieceCtx.fillRect(0, 0, pieceWidth, pieceHeight);
+          
+          // Calculate source coordinates
+          const srcX = col * pieceWidth;
+          const srcY = row * pieceHeight;
+          
+          // Draw this piece from the temp canvas
+          pieceCtx.drawImage(
+            tempCanvas,
+            srcX, srcY, pieceWidth, pieceHeight,
+            0, 0, pieceWidth, pieceHeight
+          );
+          
+          // Create a small label showing the piece number
+          pieceCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          pieceCtx.fillRect(10, 10, 40, 30);
+          pieceCtx.fillStyle = '#FFFFFF';
+          pieceCtx.font = 'bold 16px Arial';
+          pieceCtx.textAlign = 'center';
+          pieceCtx.textBaseline = 'middle';
+          pieceCtx.fillText(`${row * 3 + col + 1}`, 30, 25);
+          
+          // Convert to blob
+          pieceCanvas.toBlob(blob => {
+            if (blob) {
+              pieces.push(blob);
+              piecesCompleted++;
+              
+              // When all pieces are done, resolve the promise
+              if (piecesCompleted === 9) {
+                URL.revokeObjectURL(url);
+                resolve(pieces);
+              }
+            } else {
+              URL.revokeObjectURL(url);
+              reject(new Error('Failed to convert piece to blob'));
+            }
+          }, file.type || 'image/jpeg', 0.95);
+        }
+      }
     };
     
     img.onerror = () => {
@@ -138,4 +257,34 @@ export function downloadBlob(blob: Blob, filename: string): void {
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 100);
+}
+
+/**
+ * Download multiple blobs as a zip file
+ */
+export async function downloadBlobsAsZip(blobs: Blob[], baseFilename: string): Promise<void> {
+  try {
+    // Dynamic import of JSZip to avoid importing it unconditionally
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    
+    // Add each blob to the zip file with an appropriate name
+    blobs.forEach((blob, index) => {
+      const extension = blob.type.split('/')[1] || 'jpg';
+      const filename = `${baseFilename}_parte_${index + 1}.${extension}`;
+      zip.file(filename, blob);
+    });
+    
+    // Generate the zip file
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    
+    // Download the zip file
+    const zipFilename = `${baseFilename}_mosaico.zip`;
+    downloadBlob(zipBlob, zipFilename);
+    
+    return;
+  } catch (error) {
+    console.error('Failed to create zip file:', error);
+    throw new Error('Falha ao criar arquivo zip');
+  }
 }
