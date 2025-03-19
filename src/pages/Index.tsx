@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import ImageDropzone from '@/components/ImageDropzone';
@@ -167,7 +168,18 @@ const Index = () => {
           hasMosaicPieces: !!image.mosaicPieces,
           mosaicPiecesCount: image.mosaicPieces?.length
         });
-        toast.error('Imagem não disponível para download. Dados incompletos.');
+        
+        // Fallback for when there's a mismatch between mode and available data
+        if (mosaicMode && image.convertedBlob) {
+          const filename = image.file.name.replace(
+            /\.[^/.]+$/, 
+            `_resized.${image.file.name.split('.').pop()}`
+          );
+          downloadBlob(image.convertedBlob, filename);
+          toast.success(`${filename} baixada com sucesso`);
+        } else {
+          toast.error('Imagem não disponível para download. Tente converter novamente.');
+        }
       }
     } catch (error) {
       console.error('Download error:', error);
@@ -185,9 +197,21 @@ const Index = () => {
     
     try {
       if (mosaicMode) {
+        let downloadedCount = 0;
         completedImages.forEach((image, index) => {
           if (!image.mosaicPieces || image.mosaicPieces.length === 0) {
             console.warn('Skipping image with no mosaic pieces:', image.file.name);
+            // Try to use convertedBlob as fallback
+            if (image.convertedBlob) {
+              const filename = image.file.name.replace(
+                /\.[^/.]+$/, 
+                `_resized.${image.file.name.split('.').pop()}`
+              );
+              setTimeout(() => {
+                downloadBlob(image.convertedBlob!, filename);
+                downloadedCount++;
+              }, index * 100);
+            }
             return;
           }
           
@@ -197,6 +221,7 @@ const Index = () => {
           setTimeout(() => {
             downloadBlobsAsZip(image.mosaicPieces!, baseFilename)
               .then(() => {
+                downloadedCount++;
                 toast.success(`Mosaico de ${image.file.name} baixado`);
               })
               .catch(error => {
@@ -252,6 +277,11 @@ const Index = () => {
   }, [images]);
 
   const handleMosaicModeChange = useCallback((enabled: boolean) => {
+    if (images.length > 0) {
+      toast.error('Remova todas as imagens antes de mudar o modo');
+      return;
+    }
+    
     setMosaicMode(enabled);
     
     if (enabled) {
@@ -259,16 +289,16 @@ const Index = () => {
     } else {
       toast.info('Modo mosaico desativado. As imagens serão redimensionadas normalmente.');
     }
-  }, []);
+  }, [images.length]);
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-b from-background to-secondary/20">
       <div className="container max-w-6xl mx-auto px-4 py-8 md:py-16" 
            style={{ minHeight: viewportHeight }}>
         <header className="mb-8 md:mb-12 text-center animate-fade-in opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-          <div className="inline-flex items-center gap-2 border border-muted px-3 py-1 rounded-full text-xs font-medium text-muted-foreground mb-4">
-            <Image className="w-3.5 h-3.5" />
-            Conversor de Imagens
+          <div className="flex justify-center gap-6 mb-4">
+            <img src="/header-image-1.webp" alt="Header" className="h-16 w-auto" />
+            <img src="/header-image-2.webp" alt="Header" className="h-16 w-auto" />
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 text-balance">
             Redimensione suas imagens com precisão

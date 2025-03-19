@@ -32,7 +32,7 @@ const ConversionCard: React.FC<ConversionCardProps> = ({
     <Card className="w-full bg-card/80 backdrop-blur-sm border rounded-xl overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-medium flex items-center justify-between">
-          <span>Conversor de Imagens</span>
+          <span>Redimensionar Imagens</span>
           {isProcessing && (
             <RefreshCw className="w-4 h-4 animate-spin text-primary" />
           )}
