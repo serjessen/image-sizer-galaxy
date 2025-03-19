@@ -138,28 +138,40 @@ const Index = () => {
       return;
     }
     
-    if (mosaicMode && image.mosaicPieces && image.mosaicPieces.length > 0) {
-      const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
-      console.log('Downloading mosaic with pieces:', image.mosaicPieces.length);
+    try {
+      console.log('Downloading image:', image.file.name, 'Mosaic mode:', mosaicMode);
       
-      downloadBlobsAsZip(image.mosaicPieces, baseFilename)
-        .then(() => {
-          toast.success(`Mosaico de ${image.file.name} baixado com sucesso`);
-        })
-        .catch((error) => {
-          console.error('Failed to download mosaic:', error);
-          toast.error('Falha ao baixar o mosaico');
+      if (mosaicMode && image.mosaicPieces && image.mosaicPieces.length > 0) {
+        const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
+        console.log('Downloading mosaic with pieces:', image.mosaicPieces.length);
+        
+        downloadBlobsAsZip(image.mosaicPieces, baseFilename)
+          .then(() => {
+            toast.success(`Mosaico de ${image.file.name} baixado com sucesso`);
+          })
+          .catch((error) => {
+            console.error('Failed to download mosaic:', error);
+            toast.error(`Falha ao baixar o mosaico: ${error.message}`);
+          });
+      } else if (!mosaicMode && image.convertedBlob) {
+        const filename = image.file.name.replace(
+          /\.[^/.]+$/, 
+          `_resized.${image.file.name.split('.').pop()}`
+        );
+        
+        downloadBlob(image.convertedBlob, filename);
+        toast.success(`${filename} baixada com sucesso`);
+      } else {
+        console.error('Missing data for download:', { 
+          hasConvertedBlob: !!image.convertedBlob,
+          hasMosaicPieces: !!image.mosaicPieces,
+          mosaicPiecesCount: image.mosaicPieces?.length
         });
-    } else if (!mosaicMode && image.convertedBlob) {
-      const filename = image.file.name.replace(
-        /\.[^/.]+$/, 
-        `_resized.${image.file.name.split('.').pop()}`
-      );
-      
-      downloadBlob(image.convertedBlob, filename);
-      toast.success(`${filename} baixada com sucesso`);
-    } else {
-      toast.error('Imagem não disponível para download');
+        toast.error('Imagem não disponível para download. Dados incompletos.');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Erro ao baixar a imagem');
     }
   }, [images, mosaicMode]);
 
@@ -171,45 +183,60 @@ const Index = () => {
       return;
     }
     
-    if (mosaicMode) {
-      completedImages.forEach((image, index) => {
-        if (!image.mosaicPieces || image.mosaicPieces.length === 0) return;
+    try {
+      if (mosaicMode) {
+        completedImages.forEach((image, index) => {
+          if (!image.mosaicPieces || image.mosaicPieces.length === 0) {
+            console.warn('Skipping image with no mosaic pieces:', image.file.name);
+            return;
+          }
+          
+          const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
+          console.log(`Downloading mosaic for ${baseFilename} with ${image.mosaicPieces.length} pieces`);
+          
+          setTimeout(() => {
+            downloadBlobsAsZip(image.mosaicPieces!, baseFilename)
+              .then(() => {
+                toast.success(`Mosaico de ${image.file.name} baixado`);
+              })
+              .catch(error => {
+                console.error('Failed to download mosaic:', error);
+                toast.error(`Falha ao baixar o mosaico ${baseFilename}`);
+              });
+          }, index * 1000);
+        });
         
-        const baseFilename = image.file.name.replace(/\.[^/.]+$/, '');
-        
-        setTimeout(() => {
-          downloadBlobsAsZip(image.mosaicPieces!, baseFilename)
-            .catch(error => {
-              console.error('Failed to download mosaic:', error);
-              toast.error(`Falha ao baixar o mosaico ${baseFilename}`);
-            });
-        }, index * 1000);
-      });
-      
-      toast.success(
-        `${completedImages.length} ${
-          completedImages.length === 1 ? 'mosaico será baixado' : 'mosaicos serão baixados'
-        }`
-      );
-    } else {
-      completedImages.forEach((image, index) => {
-        if (!image.convertedBlob) return;
-        
-        const filename = image.file.name.replace(
-          /\.[^/.]+$/, 
-          `_resized.${image.file.name.split('.').pop()}`
+        toast.success(
+          `${completedImages.length} ${
+            completedImages.length === 1 ? 'mosaico será baixado' : 'mosaicos serão baixados'
+          }`
         );
+      } else {
+        completedImages.forEach((image, index) => {
+          if (!image.convertedBlob) {
+            console.warn('Skipping image with no converted blob:', image.file.name);
+            return;
+          }
+          
+          const filename = image.file.name.replace(
+            /\.[^/.]+$/, 
+            `_resized.${image.file.name.split('.').pop()}`
+          );
+          
+          setTimeout(() => {
+            downloadBlob(image.convertedBlob!, filename);
+          }, index * 100);
+        });
         
-        setTimeout(() => {
-          downloadBlob(image.convertedBlob!, filename);
-        }, index * 100);
-      });
-      
-      toast.success(
-        `${completedImages.length} ${
-          completedImages.length === 1 ? 'imagem baixada' : 'imagens baixadas'
-        }`
-      );
+        toast.success(
+          `${completedImages.length} ${
+            completedImages.length === 1 ? 'imagem baixada' : 'imagens baixadas'
+          }`
+        );
+      }
+    } catch (error) {
+      console.error('Download all error:', error);
+      toast.error('Erro ao baixar as imagens');
     }
   }, [images, mosaicMode]);
 
@@ -358,4 +385,3 @@ const Index = () => {
 };
 
 export default Index;
-

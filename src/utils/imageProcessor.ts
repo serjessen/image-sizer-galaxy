@@ -277,12 +277,13 @@ export async function downloadBlobsAsZip(blobs: Blob[], baseFilename: string): P
     const zip = new JSZip();
     
     // Add each blob to the zip file with an appropriate name
-    blobs.forEach((blob, index) => {
+    for (let i = 0; i < blobs.length; i++) {
+      const blob = blobs[i];
       const extension = blob.type.split('/')[1] || 'jpg';
-      const filename = `${baseFilename}_parte_${index + 1}.${extension}`;
+      const filename = `${baseFilename}_parte_${i + 1}.${extension}`;
       console.log(`Adding to zip: ${filename}`);
       zip.file(filename, blob);
-    });
+    }
     
     // Generate the zip file
     console.log('Generating zip file...');
@@ -292,7 +293,16 @@ export async function downloadBlobsAsZip(blobs: Blob[], baseFilename: string): P
     // Download the zip file
     const zipFilename = `${baseFilename}_mosaico.zip`;
     console.log(`Downloading zip as: ${zipFilename}`);
-    downloadBlob(zipBlob, zipFilename);
+    
+    // Force download of the zip
+    const url = URL.createObjectURL(zipBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = zipFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
     
     return;
   } catch (error) {
