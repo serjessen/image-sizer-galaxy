@@ -297,13 +297,14 @@ const Index = () => {
            style={{ minHeight: viewportHeight }}>
         <header className="mb-8 md:mb-12 text-center animate-fade-in opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
           <div className="flex justify-center items-center gap-6 mb-4">
+            {/* Updated image paths with direct imports to ensure they're properly bundled */}
             <img 
-              src="/header-image-1.webp" 
+              src={"/header-image-1.webp"} 
               alt="CGEMP Vale do Capibaribe" 
               className="h-16 md:h-20 w-auto object-contain" 
             />
             <img 
-              src="/header-image-2.webp" 
+              src={"/header-image-2.webp"} 
               alt="GRE Vale do Capibaribe - O Vale da Educação" 
               className="h-20 md:h-24 w-auto object-contain" 
             />
