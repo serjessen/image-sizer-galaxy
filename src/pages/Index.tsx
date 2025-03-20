@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import ImageDropzone from '@/components/ImageDropzone';
@@ -169,7 +168,6 @@ const Index = () => {
           mosaicPiecesCount: image.mosaicPieces?.length
         });
         
-        // Fallback for when there's a mismatch between mode and available data
         if (mosaicMode && image.convertedBlob) {
           const filename = image.file.name.replace(
             /\.[^/.]+$/, 
@@ -201,7 +199,6 @@ const Index = () => {
         completedImages.forEach((image, index) => {
           if (!image.mosaicPieces || image.mosaicPieces.length === 0) {
             console.warn('Skipping image with no mosaic pieces:', image.file.name);
-            // Try to use convertedBlob as fallback
             if (image.convertedBlob) {
               const filename = image.file.name.replace(
                 /\.[^/.]+$/, 
@@ -297,14 +294,13 @@ const Index = () => {
            style={{ minHeight: viewportHeight }}>
         <header className="mb-8 md:mb-12 text-center animate-fade-in opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
           <div className="flex justify-center items-center gap-6 mb-4">
-            {/* Updated image paths with direct imports to ensure they're properly bundled */}
             <img 
-              src={"/header-image-1.webp"} 
+              src={import.meta.env.BASE_URL + "header-image-1.webp"} 
               alt="CGEMP Vale do Capibaribe" 
               className="h-16 md:h-20 w-auto object-contain" 
             />
             <img 
-              src={"/header-image-2.webp"} 
+              src={import.meta.env.BASE_URL + "header-image-2.webp"} 
               alt="GRE Vale do Capibaribe - O Vale da Educação" 
               className="h-20 md:h-24 w-auto object-contain" 
             />
