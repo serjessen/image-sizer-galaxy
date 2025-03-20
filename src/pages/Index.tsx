@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { toast } from 'sonner';
 import ImageDropzone from '@/components/ImageDropzone';
@@ -293,18 +294,6 @@ const Index = () => {
       <div className="container max-w-6xl mx-auto px-4 py-8 md:py-16" 
            style={{ minHeight: viewportHeight }}>
         <header className="mb-8 md:mb-12 text-center animate-fade-in opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-          <div className="flex justify-center items-center gap-6 mb-4">
-            <img 
-              src={import.meta.env.BASE_URL + "header-image-1.webp"} 
-              alt="CGEMP Vale do Capibaribe" 
-              className="h-16 md:h-20 w-auto object-contain" 
-            />
-            <img 
-              src={import.meta.env.BASE_URL + "header-image-2.webp"} 
-              alt="GRE Vale do Capibaribe - O Vale da Educação" 
-              className="h-20 md:h-24 w-auto object-contain" 
-            />
-          </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 text-balance">
             Redimensione suas imagens com precisão
           </h1>
