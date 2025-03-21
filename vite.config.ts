@@ -6,11 +6,6 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  // Determine base path based on the build environment
-  const basePath = process.env.LOVABLE_APP 
-    ? '/' // If building on Lovable platform
-    : '/mosaico-cgemp/'; // GitHub Pages path
-
   return {
     server: {
       host: "::",
@@ -26,7 +21,7 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "./src"),
       },
     },
-    // Use dynamic base path
-    base: basePath,
+    // Use root path for deployment
+    base: '/',
   };
 });
