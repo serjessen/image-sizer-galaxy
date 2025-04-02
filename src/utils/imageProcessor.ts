@@ -1,4 +1,3 @@
-
 /**
  * Utility functions for image processing and conversion
  */
@@ -148,15 +147,6 @@ export async function createMosaicPieces(
             srcX, srcY, pieceWidth, pieceHeight,
             0, 0, pieceWidth, pieceHeight
           );
-          
-          // Create a small label showing the piece number
-          pieceCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-          pieceCtx.fillRect(10, 10, 40, 30);
-          pieceCtx.fillStyle = '#FFFFFF';
-          pieceCtx.font = 'bold 16px Arial';
-          pieceCtx.textAlign = 'center';
-          pieceCtx.textBaseline = 'middle';
-          pieceCtx.fillText(`${row * 3 + col + 1}`, 30, 25);
           
           // Convert to blob
           pieceCanvas.toBlob(blob => {
